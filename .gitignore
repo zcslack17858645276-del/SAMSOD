@@ -1,0 +1,15 @@
+# datasets
+dataset/
+datasets/
+
+# checkpoints / models
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+
+# cache / logs
+__pycache__/
+*.log
+wandb/
+outputs/

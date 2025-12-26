@@ -1,0 +1,84 @@
+antlr4-python3-runtime==4.9.3
+anyio==4.12.0
+certifi==2025.11.12
+charset-normalizer==3.4.4
+click==8.3.1
+cloudpickle==3.1.2
+contourpy==1.3.3
+cycler==0.12.1
+decord==0.6.0
+einops==0.8.1
+filelock==3.19.1
+fonttools==4.61.1
+fsspec==2025.9.0
+h11==0.16.0
+hf-xet==1.2.0
+httpcore==1.0.9
+httpx==0.28.1
+huggingface_hub==1.2.3
+hydra-core==1.3.2
+idna==3.11
+ImageIO @ file:///home/task_176295403596078/conda-bld/imageio_1762954050888/work
+importlib_metadata==8.7.1
+iopath==0.1.10
+Jinja2==3.1.6
+kiwisolver==1.4.9
+lazy_loader @ file:///croot/lazy_loader_1718176737906/work
+MarkupSafe==2.1.5
+matplotlib==3.10.8
+mkl-service==2.5.2
+mkl_fft @ file:///home/task_176159258761192/conda-bld/mkl_fft_1761592901799/work
+mkl_random @ file:///home/task_176159293348456/conda-bld/mkl_random_1761592947335/work
+mpmath==1.3.0
+networkx @ file:///croot/networkx_1756709277056/work
+numpy @ file:///home/task_176398079693325/conda-bld/numpy_and_numpy_base_1763980847112/work/dist/numpy-2.3.5-cp311-cp311-linux_x86_64.whl#sha256=150316e8667f4eadd13de7e3684b9eda04a1980e9b791daf894bbb31fdde5810
+nvidia-cublas==13.0.0.19
+nvidia-cuda-cupti==13.0.48
+nvidia-cuda-nvrtc==13.0.48
+nvidia-cuda-runtime==13.0.48
+nvidia-cudnn-cu13==9.13.0.50
+nvidia-cufft==12.0.0.15
+nvidia-cufile==1.15.0.42
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.3.29
+nvidia-cusparse==12.6.2.49
+nvidia-cusparselt-cu13==0.8.0
+nvidia-nccl-cu13==2.27.7
+nvidia-nvjitlink==13.0.39
+nvidia-nvshmem-cu13==3.3.24
+nvidia-nvtx==13.0.39
+omegaconf==2.3.0
+opencv-python==4.12.0
+opencv-python-headless==4.12.0
+orjson==3.11.5
+packaging @ file:///home/task_176104885106445/conda-bld/packaging_1761049078006/work
+panda==0.3.1
+pandas==2.3.3
+pillow==11.3.0
+portalocker==3.2.0
+pycocotools==2.0.11
+pyparsing==3.3.1
+python-dateutil==2.9.0.post0
+pytz==2025.2
+pyvers==0.1.0
+PyYAML==6.0.3
+requests==2.32.5
+safetensors==0.7.0
+scikit-image @ file:///home/task_176477244714971/conda-bld/scikit-image_1764772820534/work
+scipy @ file:///home/task_176219485285994/conda-bld/scipy_1762195051052/work/dist/scipy-1.16.3-cp311-cp311-linux_x86_64.whl#sha256=d486aaa7b123160a71315bca08fdfd9eca6d720affdc15e1b649309e52a3188a
+shellingham==1.5.4
+six==1.17.0
+submitit==1.5.4
+sympy==1.14.0
+tensordict==0.10.0
+tifffile @ file:///home/task_175991743879915/conda-bld/tifffile_1759918243898/work
+timm==1.0.22
+torch==2.9.1+cu130
+torchvision==0.24.1+cu130
+tqdm @ file:///home/task_176286286867676/conda-bld/tqdm_1762863348022/work
+triton==3.5.1
+typer-slim==0.20.1
+typing_extensions==4.15.0
+tzdata==2025.3
+urllib3==2.6.2
+zipp==3.23.0
