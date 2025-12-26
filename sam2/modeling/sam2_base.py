@@ -15,6 +15,8 @@ from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 
+from .Attention import CBAMBlock
+
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
 
@@ -98,6 +100,10 @@ class SAM2Base(torch.nn.Module):
 
         # Part 1: the image backbone
         self.image_encoder = image_encoder
+
+        # 添加注意力机制
+        self.my_attention = CBAMBlock(channel=256)
+
         # Use level 0, 1, 2 for high-res setting, or just level 2 for the default setting
         self.use_high_res_features_in_sam = use_high_res_features_in_sam
         self.num_feature_levels = 3 if use_high_res_features_in_sam else 1
@@ -469,7 +475,16 @@ class SAM2Base(torch.nn.Module):
     def forward_image(self, img_batch: torch.Tensor):
         """Get the image feature on the input batch."""
         backbone_out = self.image_encoder(img_batch)
+        
         # 在这里对image encoder的每层特征图进行操作
+        feats = backbone_out["vision_features"]
+        attn_map = self.my_attention(feats)
+        refined_feats = feats * attn_map  # 或者 feats + feats * attn_map (残差连接)
+        
+        # 更新回字典中
+        backbone_out["vision_features"] = refined_feats
+        
+
         if self.use_high_res_features_in_sam:
             # precompute projected level 0 and level 1 features in SAM decoder
             # to avoid running it again on every SAM click

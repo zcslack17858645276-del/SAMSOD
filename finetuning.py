@@ -20,9 +20,19 @@ global_step = 0
 # load model
 sam2_model = build_sam2(
     args.model_cfg,
-    args.sam2_checkpoint,
+    ckpt_path=None,
     device=args.device
 )
+
+if args.sam2_checkpoint:
+    print(f"Loading checkpoint from {args.sam2_checkpoint}...")
+    state_dict = torch.load(args.sam2_checkpoint, map_location=args.device)
+    
+    # strict=False 允许部分权重缺失（因为我在后面添加了注意力机制）
+    missing_keys, unexpected_keys = sam2_model.load_state_dict(state_dict, strict=False)
+    
+    # 打印一下确认，missing_keys 里应该包含你的 my_attention
+    print(f"Missing keys (Expected for new modules): {missing_keys}")
 
 
 # prepare dataloader
@@ -61,6 +71,14 @@ for param in sam2_model.sam_mask_decoder.parameters():
 # unfreeze Prompt Encoder
 for param in sam2_model.sam_prompt_encoder.parameters():
     param.requires_grad = True
+
+# 这里我是加了注意力机制，可能换其他的方法会更好？（没必要执着于注意力）
+if hasattr(sam2_model, 'my_attention'):
+    print("Unfreezing custom attention module...")
+    for param in sam2_model.my_attention.parameters():
+        param.requires_grad = True
+else:
+    print("Warning: 'my_attention' not found in model. Did you modify sam2_base.py?")
 
 # collect trainable parameters
 trainable_params = [p for p in sam2_model.parameters() if p.requires_grad]

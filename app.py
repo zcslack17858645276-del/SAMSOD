@@ -23,7 +23,7 @@ finetuned_ckpt_path = args.predict_checkpoint
 weights = torch.load(finetuned_ckpt_path, map_location=args.device)
 
 # (future: strict to False)
-msg = sam2_model.load_state_dict(weights, strict=True)
+msg = sam2_model.load_state_dict(weights, strict=False)
 print(f"Loaded finetuned weights: {msg}")
 
 # build predictor
@@ -34,8 +34,7 @@ def sod_predict(input_image):
     if input_image is None:
         return None
         
-    # --- 采用方案一：全图 Box (速度快) ---
-    # 假设你已经有了 predictor
+    # --- 全图 Box ---
     predictor.set_image(input_image)
     H, W = input_image.shape[:2]
     masks, _, _ = predictor.predict(box=np.array([[0, 0, W, H]]), multimask_output=False)

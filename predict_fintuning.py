@@ -73,7 +73,7 @@ finetuned_ckpt_path = args.predict_checkpoint
 weights = torch.load(finetuned_ckpt_path, map_location=args.device)
 
 # (future: strict to False)
-msg = sam2_model.load_state_dict(weights, strict=True)
+msg = sam2_model.load_state_dict(weights, strict=False)
 print(f"Loaded finetuned weights: {msg}")
 
 # build predictor
