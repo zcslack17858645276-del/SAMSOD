@@ -20,12 +20,17 @@ dataset
 
 ## 模型架构
 当前采用适配器的方式来微调image_encoder，mask_decoder以及prompt_ecoder全量微调
+采用CBAM模块精细化特征图
 数据预处理当前仅使用缩放去对齐
 损失函数当前仅使用BCE
 测试集评估采用Fmax、WeightedF、Emean、Emax、MAE
 
 ## 文件描述
-requirement.py: 本次实验所使用的依赖
+/dataset 数据集
+/checkpoints 预训练模型
+/checkpoints_finetuned 微调训练模型
+/sam2 模型
+requirement.txt: 本次实验所使用的依赖
 adapter.py: 微调image_encoder
 dataloader.py: 数据集处理
 evaluator.py: 测试评估器
@@ -35,19 +40,15 @@ predict_finetuning.py: 预测
 option.py: 参数配置
 app.py: UI展示
 
-# 
-
 ## 未来工作
 
 代码优化（使用类、函数去使得代码更加可观，添加适量的注释）
 
-添加评估进度条用于可视化
+更改适配器模块/多尺度融合Image Encoder的不同层/采取多分支解码器+特定模块融合方式（低层-边缘，高层-细节）
 
-在适配器里继续做文章/进行多尺度融合后输入到decoder/采取多分支解码器+特定模块融合方式（低层-边缘，高层-细节）
+采用automatic_mask_generator生成关于前景的伪掩码
 
-采用automatic_mask_generator生成伪掩码
-
-采用dice、bce损失监督
+采用dice、bce、ssim进行损失监督
 
 采用更多的数据集（DUT-OMRON、ECSSD、HKU-IS、PASCAL-S）
 
