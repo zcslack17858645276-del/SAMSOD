@@ -111,10 +111,11 @@ def train_epoch(dataloader, model, optimizer, scheduler, scaler, global_step, ep
     for itr, batch_data in enumerate(dataloader):
         # init data
         images = batch_data['image'].cuda() # [B, 3, 1024, 1024]
-        points = batch_data['points'].cuda()
-        labels = batch_data['labels'].cuda()
-        box = batch_data['box'].cuda()
-        gt_masks = batch_data['mask'].cuda()
+        points = batch_data['points'].cuda() # [N, 2]
+        labels = batch_data['labels'].cuda() # [N,]
+        box = batch_data['box'].cuda() # [1, 4]
+        gt_masks = batch_data['mask'].cuda() # [1, 1024, 1024]
+        mask_inputs = batch_data['mask_prompt'].cuda() # [B, 1, 256, 256]
 
         with autocast(device_type=args.device):
             # =================================================
@@ -143,7 +144,7 @@ def train_epoch(dataloader, model, optimizer, scheduler, scaler, global_step, ep
             sparse_embeddings, dense_embeddings = model.sam_prompt_encoder(
                 points=(points, labels),
                 boxes=box,
-                masks=None,
+                masks=mask_inputs,
             )
 
             # =================================================

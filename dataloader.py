@@ -58,6 +58,12 @@ class OurDataset(Dataset):
         # ==================================================
         points, labels = self._simulate_click_from_mask(mask)
         box = self._simulate_box_from_mask(mask) # (1, 4)
+
+        # ==================================================
+        # Generate Mask Prompt
+        # ==================================================
+        # 生成一个低分辨率、带噪声的 Mask 用于提示
+        mask_prompt_np = self._preprocess_mask_prompt(mask)
         
         # ==================================================
         # resize & (future transform)
@@ -92,6 +98,11 @@ class OurDataset(Dataset):
         tensor_mask = torch.from_numpy(mask_1024).float().unsqueeze(0)
         tensor_mask = (tensor_mask > 0).float() # Binarize
 
+        # === Mask Prompt Tensor [1, 256, 256] ===
+        tensor_mask_prompt = torch.from_numpy(mask_prompt_np).float().unsqueeze(0)
+        # 确保也是 0/1 (SAM 内部会处理，但输入干净点比较好)
+        tensor_mask_prompt = (tensor_mask_prompt > 0).float()
+
         # Points: (N, 2) -> FloatTensor
         tensor_points = torch.from_numpy(points).float()
         
@@ -101,6 +112,7 @@ class OurDataset(Dataset):
         return {
             "image": tensor_img,   # [3, 1024, 1024]
             "mask": tensor_mask,   # [1, 1024, 1024]
+            "mask_prompt": tensor_mask_prompt, # [1, 256, 256]
             "points": tensor_points, # [N, 2]
             "labels": tensor_labels, # [N,]
             "box": tensor_box,     # [1, 4]
@@ -155,3 +167,30 @@ class OurDataset(Dataset):
             box = np.array([[0, 0, 0, 0]], dtype=np.float32)
             
         return box
+    
+    def _preprocess_mask_prompt(self, mask):
+        """
+        处理步骤：
+        1. Resize 到 256x256
+        2. 数据增强（随机腐蚀/膨胀）模拟不准确的提示
+        """
+        # 1. Resize 到 256x256
+        mask_low_res = cv2.resize(mask, (self.prompt_mask_size, self.prompt_mask_size), interpolation=cv2.INTER_NEAREST)
+
+        # 2. 随机加噪声 (Simulate Noise)
+        # 如果是全黑mask就不处理了，否则进行扰动
+        if mask_low_res.max() > 0:
+            prob = np.random.random()
+            
+            kernel_size = np.random.randint(3, 8) # 随机核大小
+            kernel = np.ones((kernel_size, kernel_size), np.uint8)
+
+            if prob < 0.4:
+                # 40% 概率：腐蚀 (提示比真实物体小)
+                mask_low_res = cv2.erode(mask_low_res, kernel, iterations=1)
+            elif prob < 0.8:
+                # 40% 概率：膨胀 (提示比真实物体大)
+                mask_low_res = cv2.dilate(mask_low_res, kernel, iterations=1)
+            # 20% 概率：保持原样 (精准提示)
+        
+        return mask_low_res

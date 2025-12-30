@@ -1,0 +1,21 @@
+{
+  "dataset": "checkpoints",
+  "base_prefix": "checkpoints/",
+  "files": [
+    {
+      "path": "sam2_hiera_base_plus.pt",
+      "oss_key": "checkpoints/sam2_hiera_base_plus.pt",
+      "size": 323493298
+    },
+    {
+      "path": "sam2_hiera_large.pt",
+      "oss_key": "checkpoints/sam2_hiera_large.pt",
+      "size": 897952466
+    },
+    {
+      "path": "sam2_hiera_tiny.pt",
+      "oss_key": "checkpoints/sam2_hiera_tiny.pt",
+      "size": 155906050
+    }
+  ]
+}

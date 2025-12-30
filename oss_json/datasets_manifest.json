@@ -1,0 +1,16 @@
+{
+  "dataset": "datasets",
+  "base_prefix": "datasets",
+  "files": [
+    {
+      "path": "/DUTS-TE.zip",
+      "oss_key": "datasets/DUTS-TE.zip",
+      "size": 139431108
+    },
+    {
+      "path": "/DUTS-TR.zip",
+      "oss_key": "datasets/DUTS-TR.zip",
+      "size": 270227472
+    }
+  ]
+}
