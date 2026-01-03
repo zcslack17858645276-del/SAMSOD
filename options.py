@@ -11,6 +11,13 @@ def get_argparser():
     )
 
     parser.add_argument(
+        "--augment",
+        type=bool,
+        default=True,
+        help="Turn on the data augment(RandomRotate and RandomFlip)"
+    )
+
+    parser.add_argument(
         "--model_cfg",
         type=str,
         default="configs/sam2/sam2_hiera_t.yaml",
@@ -142,5 +149,7 @@ def get_argparser():
         default=1.0,
         help="Weight for the ssim loss"
     )
+
+
     
     return parser.parse_args()

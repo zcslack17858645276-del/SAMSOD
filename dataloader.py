@@ -6,6 +6,8 @@ import os
 from torchvision.transforms import functional as F
 
 from options import get_argparser
+from transforms import Compose, Resize, RandomRotate, RandomHVFlip, ToTensorAndNormalize
+
 
 class OurDataset(Dataset):
     def __init__(self, data_root, transform=None):
@@ -13,13 +15,24 @@ class OurDataset(Dataset):
         self.data_root = data_root
         self.images_path = os.path.join(data_root, "im")
         self.masks_path = os.path.join(data_root, "gt")
+
+        # the target input size for Image Encoder
+        input_size = get_argparser().input_size
+        self.target_size = input_size
+
+        # 如果没有传入transform，定义默认的transforms流程
+        if transform is None:
+            # 默认只做Resize 和 ToTensor
+            self.tranforms = Compose([
+                Resize(input_size),
+                ToTensorAndNormalize()
+            ])
+        else:
+            self.tranforms = transform
         
         # get all image filenames
         # 这里在小规模测试，记得删[:200]
         self.filenames = [f for f in os.listdir(self.images_path) if f.endswith('.jpg') or f.endswith('.png')][:200]
-        
-        # the target input size for Image Encoder
-        self.target_size = get_argparser().input_size
 
         # the mask prompt size for prompt encoder
         self.prompt_mask_size = 256
@@ -43,16 +56,11 @@ class OurDataset(Dataset):
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         
         # check if image and mask are loaded properly
-        if image is None:
-            raise FileNotFoundError(f"image load failed (image is None): {img_path}")
-        if mask is None:
-            # 尝试回退
-            if not os.path.exists(mask_path):
-                 # 打印详细错误帮助定位
-                 raise FileNotFoundError(f"mask load failed: {mask_path}")
-            else:
-                 raise ValueError(f"mask load failed in error: {mask_path}")
-            
+        if image is None or mask is None:
+            raise FileNotFoundError(f"image load failed {img_path} or {mask_path}")
+
+        '''
+        the origion logits(befor data_preprocess)    
         # get original size
         orig_h, orig_w = image.shape[:2]
 
@@ -100,17 +108,31 @@ class OurDataset(Dataset):
         # Mask: [1, 1024, 1024] to binary
         tensor_mask = torch.from_numpy(mask_1024).float().unsqueeze(0)
         tensor_mask = (tensor_mask > 0).float() # Binarize
+        '''
+        
+        # get the tensor img and mask
+        tensor_img, tensor_mask = self.tranforms(image, mask)
+
+        # generate the prompt
+        mask_np_1024 = tensor_mask.squeeze(0).cpu().numpy().astype(np.uint8)
+        points, labels = self._simulate_click_from_mask(mask_np_1024)
+        box = self._simulate_box_from_mask(mask_np_1024)
+        mask_prompt_np = self._preprocess_mask_prompt(mask_np_1024)
+        
+        # Points: (N, 2) -> FloatTensor
+        tensor_points = torch.from_numpy(points).float()
+
+        # Labels: (N,) -> IntTensor (1=foreground, 0=background)
+        tensor_labels = torch.from_numpy(labels).long()
+
+        #
+        tensor_box = torch.from_numpy(box).float()
 
         # === Mask Prompt Tensor [1, 256, 256] ===
         tensor_mask_prompt = torch.from_numpy(mask_prompt_np).float().unsqueeze(0)
         # 确保也是 0/1 (SAM 内部会处理，但输入干净点比较好)
         tensor_mask_prompt = (tensor_mask_prompt > 0).float()
-
-        # Points: (N, 2) -> FloatTensor
-        tensor_points = torch.from_numpy(points).float()
-        
-        # Labels: (N,) -> IntTensor (1=foreground, 0=background)
-        tensor_labels = torch.from_numpy(labels).long()
+    
 
         return {
             "image": tensor_img,   # [3, 1024, 1024]
@@ -119,7 +141,7 @@ class OurDataset(Dataset):
             "points": tensor_points, # [N, 2]
             "labels": tensor_labels, # [N,]
             "box": tensor_box,     # [1, 4]
-            "orig_size": (orig_h, orig_w)  # [H, W]
+            "orig_size": (self.target_size, self.target_size)  # [H, W]
         }
 
     def _simulate_click_from_mask(self, mask):
@@ -162,6 +184,9 @@ class OurDataset(Dataset):
             
             # add some random jitter
             x_min = max(0, x_min - np.random.randint(0, 5))
+            x_max = min(mask.shape[1], x_max + np.random.randint(0, 5))
+            y_min = max(0, y_min - np.random.randint(0, 5))
+            y_max = min(mask.shape[1], y_max + np.random.randint(0, 5))
             
             # box: [[x_min, y_min, x_max, y_max]]，shape: [1, 4]
             box = np.array([[x_min, y_min, x_max, y_max]], dtype=np.float32)

@@ -28,14 +28,13 @@ class SSIM(nn.Module):
         # img1: Prediction (Probabilities 0-1)
         # img2: Target (0 or 1)
         
-        # 动态将 window 移动到与输入相同的 device
         if img1.is_cuda:
             self.window = self.window.cuda(img1.get_device())
         self.window = self.window.type_as(img1)
 
         channel = img1.size(1)
         
-        # 计算均值
+        # calculate the mean
         mu1 = F.conv2d(img1, self.window, padding=self.window_size // 2, groups=channel)
         mu2 = F.conv2d(img2, self.window, padding=self.window_size // 2, groups=channel)
 
@@ -43,12 +42,12 @@ class SSIM(nn.Module):
         mu2_sq = mu2.pow(2)
         mu1_mu2 = mu1 * mu2
 
-        # 计算方差和协方差
+        # calculate variance and covariance
         sigma1_sq = F.conv2d(img1 * img1, self.window, padding=self.window_size // 2, groups=channel) - mu1_sq
         sigma2_sq = F.conv2d(img2 * img2, self.window, padding=self.window_size // 2, groups=channel) - mu2_sq
         sigma12 = F.conv2d(img1 * img2, self.window, padding=self.window_size // 2, groups=channel) - mu1_mu2
 
-        # SSIM 公式
+        # SSIM
         C1 = 0.01 ** 2
         C2 = 0.03 ** 2
 
@@ -75,26 +74,26 @@ class SODLoss(nn.Module):
         target:      [B, 1, H, W] (Ground Truth，0 或 1)
         """
         
-        # 1. 尺寸对齐 (防止 SAM2 输出 256 与 GT 1024 不匹配)
+        # align the size 
         if pred_logits.shape[-2:] != target.shape[-2:]:
             pred_logits = F.interpolate(pred_logits, size=target.shape[-2:], mode='bilinear', align_corners=False)
 
-        # 2. 生成概率图 (Probabilities) - 用于 SSIM 和 Dice
+        # generate the probabilities for ssim and dice
         pred_probs = torch.sigmoid(pred_logits)
 
         # ============================
-        # A. BCE Loss (使用 Logits)
+        # use logits to calculate BCE Loss
         # ============================
         loss_bce = self.bce_loss(pred_logits, target)
 
         # ============================
-        # B. SSIM Loss (使用 Probs)
+        # use probs to calculate SSIM Loss
         # ============================
-        # SSIM 返回的是相似度(最大为1)，Loss = 1 - SSIM
+        # calculate SSIM，Loss = 1 - SSIM
         loss_ssim = 1 - self.ssim_module(pred_probs, target)
 
         # ============================
-        # C. Dice Loss (使用 Probs)
+        # use probs to calculate Dice Loss
         # ============================
         smooth = 1e-5
         intersection = (pred_probs * target).sum(dim=(2, 3))
@@ -103,7 +102,7 @@ class SODLoss(nn.Module):
         loss_dice = 1 - dice.mean()
 
         # ============================
-        # 总 Loss
+        # Total Loss
         # ============================
         total_loss = (self.bce_weight * loss_bce) + \
                      (self.dice_weight * loss_dice) + \

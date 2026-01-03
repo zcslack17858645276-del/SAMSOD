@@ -12,12 +12,15 @@ from options import get_argparser
 from adapter import inject_adapters
 from evaluator import SODEvaluator
 from loss import SODLoss
+from transforms import Compose, Resize, RandomHVFlip, RandomRotate, ToTensorAndNormalize
 
 
 class Trainer:
     def __init__(self, args):
         self.args = args
         self.device = args.device
+        self.augment = args.augment
+        self.sam2_size = args.input_size
 
         self.global_step = 0
         self.best_loss = float("inf")
@@ -48,8 +51,22 @@ class Trainer:
         return model
     
     def build_dataloader(self):
-        train_dataset = OurDataset(data_root=self.args.train_data_root)
-        val_dataset = OurDataset(data_root=self.args.val_data_root)
+        # definite the augment stratergy
+        train_transforms, val_tranforms = None, None
+        if self.augment:
+            train_transforms = Compose([
+                RandomHVFlip(prob=0.5),
+                RandomRotate(degree=15, prob=0.5),
+                Resize(self.sam2_size),
+                ToTensorAndNormalize()
+            ])
+            val_tranforms = Compose([
+                Resize(self.sam2_size),
+                ToTensorAndNormalize()
+            ])
+
+        train_dataset = OurDataset(data_root=self.args.train_data_root, transform=train_transforms)
+        val_dataset = OurDataset(data_root=self.args.val_data_root, transform=val_tranforms)
 
         train_loader = DataLoader(
             train_dataset,
