@@ -16,6 +16,7 @@ from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 
 from .Attention import CBAMBlock
+from .MultiFusion import MultiDilatedFusion, ElementwiseAddConv
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
@@ -101,8 +102,12 @@ class SAM2Base(torch.nn.Module):
         # Part 1: the image backbone
         self.image_encoder = image_encoder
 
-        # 添加注意力机制
+        # 添加注意力机制和融合机制, 这里的通道数可能要根据模型的大小变化，tiny是256，但是B、L是768和1024
+        # 对于后面两个，目前来说稍微有带你不现实，可能需要重写一下decoder才可以了
         self.my_attention = CBAMBlock(channel=256)
+        self.multi_dilated_fusion = MultiDilatedFusion(channels=256)
+        self.elementwise_addConv = ElementwiseAddConv(channels=256)
+
 
         # Use level 0, 1, 2 for high-res setting, or just level 2 for the default setting
         self.use_high_res_features_in_sam = use_high_res_features_in_sam

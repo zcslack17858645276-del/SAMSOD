@@ -8,6 +8,9 @@ checkpoints/
 *.pt
 *.ckpt
 
+checkpoints_fintuned/
+sam2*
+
 # cache / logs
 __pycache__/
 *.log

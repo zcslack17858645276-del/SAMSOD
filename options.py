@@ -121,5 +121,26 @@ def get_argparser():
         default="checkpoints_finetuned/sam2_final.pt",
         help="Path to the checkpoint for prediction.",
     )
+
+    parser.add_argument(
+        "--bce_weight",
+        type=float,
+        default=1.0,
+        help="Weight for the bce loss"
+    )
+
+    parser.add_argument(
+        "--dice_weight",
+        type=float,
+        default=1.0,
+        help="Weight for the dice loss"
+    )
+
+    parser.add_argument(
+        "--ssim_weight",
+        type=float,
+        default=1.0,
+        help="Weight for the ssim loss"
+    )
     
     return parser.parse_args()

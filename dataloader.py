@@ -15,11 +15,14 @@ class OurDataset(Dataset):
         self.masks_path = os.path.join(data_root, "gt")
         
         # get all image filenames
-        # 这里在小规模测试，记得删
+        # 这里在小规模测试，记得删[:200]
         self.filenames = [f for f in os.listdir(self.images_path) if f.endswith('.jpg') or f.endswith('.png')][:200]
         
-        # the target input size for SAM2
+        # the target input size for Image Encoder
         self.target_size = get_argparser().input_size
+
+        # the mask prompt size for prompt encoder
+        self.prompt_mask_size = 256
 
     def __len__(self):
         return len(self.filenames)
