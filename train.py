@@ -52,7 +52,7 @@ class Trainer:
     
     def build_dataloader(self):
         # definite the augment stratergy
-        train_transforms, val_tranforms = None, None
+        train_transforms, val_transforms = None, None
         if self.augment:
             train_transforms = Compose([
                 RandomHVFlip(prob=0.5),
@@ -60,13 +60,13 @@ class Trainer:
                 Resize(self.sam2_size),
                 ToTensorAndNormalize()
             ])
-            val_tranforms = Compose([
+            val_transforms = Compose([
                 Resize(self.sam2_size),
                 ToTensorAndNormalize()
             ])
 
         train_dataset = OurDataset(data_root=self.args.train_data_root, transform=train_transforms)
-        val_dataset = OurDataset(data_root=self.args.val_data_root, transform=val_tranforms)
+        #val_dataset = OurDataset(data_root=self.args.val_data_root, transform=val_transforms)
 
         train_loader = DataLoader(
             train_dataset,
@@ -76,7 +76,25 @@ class Trainer:
             pin_memory=True,
             drop_last=False
         )
-
+        val_loaders = []
+        for val_root in self.args.val_data_root:
+            print(f"Loading Val Dataset: {val_root}")
+            val_dataset = OurDataset(
+                data_root=val_root, 
+                transform=val_transforms, 
+            )
+            
+            # 每个数据集一个独立的 Loader
+            loader = DataLoader(
+                val_dataset,
+                batch_size=self.args.batch_size_val,
+                shuffle=False,
+                num_workers=self.args.num_workers,
+                pin_memory=True,
+                drop_last=False
+            )
+            val_loaders.append(loader)
+        '''
         val_loader = DataLoader(
             val_dataset,
             batch_size=self.args.batch_size_val,
@@ -85,8 +103,9 @@ class Trainer:
             pin_memory=True,
             drop_last=True
         )
+        '''
 
-        return train_loader, val_loader
+        return train_loader, val_loaders
 
     def freeze_and_unfreeze(self):
         for p in self.model.parameters():
@@ -220,63 +239,82 @@ class Trainer:
     @torch.no_grad()
     def validate(self, epoch):
         self.model.eval()
-        evaluator = SODEvaluator()
 
-        total_loss = 0
-        for batch in self.val_loader:
-            images = batch["image"].to(self.device)
-            points = batch["points"].to(self.device)
-            labels = batch["labels"].to(self.device)
-            box = batch["box"].to(self.device)
-            gt_masks = batch["mask"].to(self.device)
-            mask_inputs = batch["mask_prompt"].to(self.device)
+        all_metrics = {}
+        total_avg_loss = 0
+        for loader in self.val_loader:
+            dataset_name = loader.dataset.dataset_name
+            evaluator = SODEvaluator() 
+            dataset_loss = 0.0
+            print(f"Validating on {dataset_name}...") 
 
-            with autocast(device_type=self.device):
-                features = self.model.forward_image(images)
-                image_embed = features["vision_features"]
-                high_res_features = [
-                    features["backbone_fpn"][0],
-                    features["backbone_fpn"][1],
-                ]
+            for batch in loader:
+                images = batch["image"].to(self.device)
+                points = batch["points"].to(self.device)
+                labels = batch["labels"].to(self.device)
+                box = batch["box"].to(self.device)
+                gt_masks = batch["mask"].to(self.device)
+                mask_inputs = batch["mask_prompt"].to(self.device)
 
-                sparse_embeddings, dense_embeddings = self.model.sam_prompt_encoder(
-                    points=(points, labels),
-                    boxes=box,
-                    masks=mask_inputs,
-                )
+                with autocast(device_type=self.device):
+                    features = self.model.forward_image(images)
+                    image_embed = features["vision_features"]
+                    high_res_features = [
+                        features["backbone_fpn"][0],
+                        features["backbone_fpn"][1],
+                    ]
 
-                image_pe = self.model.sam_prompt_encoder.get_dense_pe()
+                    sparse_embeddings, dense_embeddings = self.model.sam_prompt_encoder(
+                        points=(points, labels),
+                        boxes=box,
+                        masks=mask_inputs,
+                    )
 
-                low_res_masks, _, _, _ = self.model.sam_mask_decoder(
-                    image_embeddings=image_embed,
-                    image_pe=image_pe,
-                    sparse_prompt_embeddings=sparse_embeddings,
-                    dense_prompt_embeddings=dense_embeddings,
-                    multimask_output=False,
-                    repeat_image=False,
-                    high_res_features=high_res_features,
-                )
+                    image_pe = self.model.sam_prompt_encoder.get_dense_pe()
 
-                pred_masks_1024 = F.interpolate(
-                    low_res_masks, 
-                    size=(1024, 1024), 
-                    mode="bilinear", 
-                    align_corners=False
-                )
+                    low_res_masks, _, _, _ = self.model.sam_mask_decoder(
+                        image_embeddings=image_embed,
+                        image_pe=image_pe,
+                        sparse_prompt_embeddings=sparse_embeddings,
+                        dense_prompt_embeddings=dense_embeddings,
+                        multimask_output=False,
+                        repeat_image=False,
+                        high_res_features=high_res_features,
+                    )
 
-                loss, _, _, _ = self.criterion(pred_masks_1024, gt_masks)
-                total_loss += loss.item()
+                    pred_masks_1024 = F.interpolate(
+                        low_res_masks, 
+                        size=(1024, 1024), 
+                        mode="bilinear", 
+                        align_corners=False
+                    )
 
-                evaluator.update(pred_masks_1024, gt_masks)
+                    loss, _, _, _ = self.criterion(pred_masks_1024, gt_masks)
+                    dataset_loss += loss.item()
 
-                #pred_logits = low_res_masks[:, 0].unsqueeze(1)
-                #gt_256 = F.interpolate(gt_masks.float(), size=(256, 256), mode="nearest")
+                    evaluator.update(pred_masks_1024, gt_masks)
 
-                #loss = F.binary_cross_entropy_with_logits(pred_logits, gt_256)
-                #total_loss += loss.item()
-                #evaluator.update(pred_logits, gt_256)
+                    #pred_logits = low_res_masks[:, 0].unsqueeze(1)
+                    #gt_256 = F.interpolate(gt_masks.float(), size=(256, 256), mode="nearest")
 
-        return total_loss / len(self.val_loader), evaluator.get_results()
+                    #loss = F.binary_cross_entropy_with_logits(pred_logits, gt_256)
+                    #total_loss += loss.item()
+                    #evaluator.update(pred_logits, gt_256)
+
+            # 计算当前数据集的平均 Loss
+            avg_dataset_loss = dataset_loss / len(loader)
+            total_avg_loss += avg_dataset_loss
+            
+            metrics = evaluator.get_results()
+            
+            for k, v in metrics.items():
+                all_metrics[f"{dataset_name}/{k}"] = v
+            all_metrics[f"{dataset_name}/loss"] = avg_dataset_loss
+
+
+        final_val_loss = total_avg_loss / len(self.val_loader)
+
+        return final_val_loss / len(self.val_loader), all_metrics
     
     def run(self):
         for epoch in range(self.args.num_epochs):
@@ -286,9 +324,17 @@ class Trainer:
             val_loss, metrics = self.validate(epoch)
 
             print(f"Train Loss: {train_loss:.4f}")
-            print(f"Val Loss: {val_loss:.4f}")
-            for k, v in metrics.items():
-                print(f"{k}: {v:.4f}")
+            print(f"Avg Val Loss: {val_loss:.4f}")
+
+            sorted_keys = sorted(metrics.keys())
+            current_dataset = ""
+            for k in sorted_keys:
+                # k 格式如 "ECSSD/mae"
+                dataset_name, metric_name = k.split('/')
+                if dataset_name != current_dataset:
+                    print(f"--- {dataset_name} ---")
+                    current_dataset = dataset_name
+                print(f"  {metric_name}: {metrics[k]:.4f}")
 
             # 保存最佳模型逻辑
             if val_loss < self.best_loss:

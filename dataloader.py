@@ -13,6 +13,9 @@ class OurDataset(Dataset):
     def __init__(self, data_root, transform=None):
 
         self.data_root = data_root
+        
+        self.dataset_name = os.path.basename(os.path.normpath(data_root))
+
         self.images_path = os.path.join(data_root, "im")
         self.masks_path = os.path.join(data_root, "gt")
 

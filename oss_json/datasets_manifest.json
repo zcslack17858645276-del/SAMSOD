@@ -11,6 +11,21 @@
       "path": "/DUTS-TR.zip",
       "oss_key": "datasets/DUTS-TR.zip",
       "size": 270227472
+    },
+    {
+      "path": "/ECSSD.zip",
+      "oss_key": "datasets/ECSSD.zip",
+      "size": 26071254
+    },
+    {
+      "path": "/HKU-IS.zip",
+      "oss_key": "datasets/HKU-IS.zip",
+      "size": 206419487
+    },
+    {
+      "path": "/PASCAL-S.zip",
+      "oss_key": "datasets/PASCAL-S.zip",
+      "size": 32162370
     }
   ]
 }

@@ -41,7 +41,8 @@ def get_argparser():
     parser.add_argument(
         "--val_data_root",
         type=str,
-        default="dataset/DUTS-TE",
+        nargs="+",
+        default=["dataset/DUTS-TE", "dataset/ECSSD", "dataset/HKU-IS", "dataset/PASCAL-S"],
         help="Root directory of the validation dataset.",
     )
     

@@ -50,7 +50,21 @@ class Adapter(nn.Module):
         
         # 输入原始 Block
         return self.block(prompted_x, *args, **kwargs)
-    
+
+def get_hiera_depths(total_blocks):
+    """
+    根据 Block 总数判断 Hiera 的规格，返回每个 Stage 的层数 (Depths)
+    """
+    if total_blocks == 48:
+        return [2, 6, 36, 4]  # Hiera-Large (SAM 2 默认)
+    elif total_blocks == 24:
+        return [2, 3, 16, 3]  # Hiera-Base+
+    elif total_blocks == 16:
+        return [1, 2, 11, 2]  # Hiera-Small
+    elif total_blocks == 12:
+        return [1, 2, 7, 2]   # Hiera-Tiny
+    else:
+        raise ValueError(f"Unknown Hiera architecture with {total_blocks} blocks.")
 
 def inject_adapters(sam_model, split_ratio=0.5):
     print("Injecting Adapters into Image Encoder (Hiera)...")
@@ -64,41 +78,31 @@ def inject_adapters(sam_model, split_ratio=0.5):
 
 
     total_blocks = len(trunk.blocks)
-    split_index = int(total_blocks * split_ratio)
+    depths = get_hiera_depths(total_blocks)
+    
+    print(f"  - Model Architecture Detected: Total {total_blocks} blocks")
+    print(f"  - Stage Depths: {depths}")
 
-    print(f"Total Blocks: {total_blocks}, Split Index: {split_index}")
-    print(f"  - Blocks 0 to {split_index-1}: UNFREEZE (Full Fine-tuning)")
-    print(f"  - Blocks {split_index} to {total_blocks-1}: FREEZE + ADAPTER")
+    stage_end_indices = [sum(depths[:i+1]) - 1 for i in range(len(depths))]
 
-    # trunk.blocks 是一个 nn.ModuleList(他没有stage参数，根据网络查询除了第三个stage，其他都是2个blocks，后续适配器可尝试添加在每个stage后)
+    # trunk.blocks 是一个 nn.ModuleList
     # large - ratio=0.5=>8千万，需要在解冻几层才会到达1B，这里的想法是在后面哪里添加注意力机制会比较好（或者搞双模态，或者在适配器里加注意力机制，去找点多尺度交叉融合的方法（这个应该比较好））
-    # 先尝试适配器里加注意力机制，不过这个要怎么加，又或者怎么去做多尺度的连接
-    # 欸，这样子搞，当前是最后一层输出到decoder，我在输入到decoder之前做一个新的融合，又或者说是加一些decoder，
-    for i in range(total_blocks):
-        block = trunk.blocks[i]
+    for i, block in enumerate(trunk.blocks):
+        if i in stage_end_indices:
+            print(f"  Block {i} is the end of a Stage. Injecting Adapter...")
+
+            # === 注入 Adapter ===
         
-        if i < split_index:
-            # === 前半部分：解冻 ===
-            print(f"  Block {i}: Unfreezing parameters...")
-            # 确保该 block 的所有参数需要梯度
-            for param in block.parameters():
-                param.requires_grad = True
-                
-        else:
-            # === 后半部分：加 Adapter ===
-            # 获取维度用于日志
-            dim = block.norm1.normalized_shape[0] if hasattr(block, 'norm1') else "Unknown"
-            print(f"  Block {i} (Dim {dim}): Injecting Adapter...")
-            
-            # 创建 Adapter (HieraBlockAdapter 的 __init__ 里会自动冻结原始 block)
-            # 这里的 HieraBlockAdapter 使用定义的Adaptor类
-            # adapter_ratio会影响Adapter里面隐藏层的维度
+            # 使用你的 Adapter 类
+            # 注意：Hiera 不同 Stage 的维度不同 (L: 144 -> 288 -> 576 -> 1152)
+            # 你的 Adapter 类需要能自动适应输入 block 的维度
             wrapped_block = Adapter(block, adapter_ratio=0.25)
-            wrapped_block = wrapped_block.to("cuda")
+            wrapped_block = wrapped_block.to(sam_model.device) # 确保设备一致
             
-            # 替换
             trunk.blocks[i] = wrapped_block
-        
-    print("Adapter injection finished.")
+            
+            # 确保 Adapter 参数可训练
+            for p in trunk.blocks[i].parameters():
+                p.requires_grad = True
 
     return sam_model

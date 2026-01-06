@@ -195,8 +195,7 @@ if __name__ == "__main__":
         output_json="oss_json/checkpoints_manifest.json"
     )
 
-    '''
-    '''
+    
     # download datasets
     download_datasets_from_manifest(
         manifest_json="oss_json/datasets_manifest.json",
@@ -206,8 +205,7 @@ if __name__ == "__main__":
         access_key_secret=ACCESS_KEY_SECRET,
         output_dir="dataset"
     )
-    '''
-    '''
+
     # unzip datasets
     unzip_all(
         zip_dir="dataset",
@@ -224,5 +222,6 @@ if __name__ == "__main__":
         access_key_secret=ACCESS_KEY_SECRET,
         output_dir="checkpoints"
     )
+
     
 
