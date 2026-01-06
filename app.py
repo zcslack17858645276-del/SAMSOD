@@ -14,7 +14,6 @@ model_cfg = args.model_cfg
 
 sam2_model = build_sam2(model_cfg, ckpt_path=None, device=args.device)
 
-# 这里到时候重写一个集成好的网络然后调用，不然会比较麻烦
 sam2_model = inject_adapters(sam2_model, split_ratio=0) 
 sam2_model = sam2_model.to(args.device)
 
